@@ -6,7 +6,7 @@ A simple slack polling app which can be deployed in your own environment.
 
 ## Current Features
 
-- One active poll per channel
+- Multiple active poll per channel
 - Polls stored in-memory or cloudant
 - Anonymous votes only
 
