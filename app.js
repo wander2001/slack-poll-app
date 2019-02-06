@@ -130,7 +130,7 @@ app.post('/slack/command', (req, res) => {
 	let payload = req.body;
 	if (process.env.VERIFY_TOKEN && process.env.VERIFY_TOKEN !== payload.token) return res.status(403);
 	
-	let pollId = payload.team_id + ':' + payload.channel_id;
+	let pollId = payload.team_id + ':' + payload.channel_id + ' : ' + Date.now() / 1000 | 0;
 	debug('pollId', pollId);
 	
 	if (!payload.text) payload.text = '';
