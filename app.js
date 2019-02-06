@@ -130,7 +130,7 @@ app.post('/slack/command', (req, res) => {
 	let payload = req.body;
 	if (process.env.VERIFY_TOKEN && process.env.VERIFY_TOKEN !== payload.token) return res.status(403);
 	
-	let pollId = payload.team_id + ':' + payload.channel_id + ' : ' + Date.now() / 1000 | 0;
+	let pollId = payload.team_id + ':' + payload.channel_id + ' : ' + Date.now() | 0;
 	debug('pollId', pollId);
 	
 	if (!payload.text) payload.text = '';
@@ -138,13 +138,6 @@ app.post('/slack/command', (req, res) => {
 	if (payload.text.match(/^\s*debug\s*$/)) {
 		debug(polls);
 		return res.status(200).send("Sent debug contents to console");
-	}
-	
-	if (payload.text.match(/^\s*delete\s*$/)) {
-		let poll = polls[pollId];
-		if (!poll) return res.status(200).send('This channel does not have an active poll.');
-		delete polls[pollId];
-		return res.status(200).send('Active poll deleted.');
 	}
 	
 	// Fix Mac smart quotes.
@@ -164,37 +157,7 @@ app.post('/slack/command', (req, res) => {
 		match[i] = match[i].replace(/^"(.*)"$/, '$1');
 	}
 	
-	if (polls[pollId]) {
-		let message = {
-			"text": "There is an active poll in this channel. Locate it and click its *Close* button, or click the button below to delete active poll.",
-			"attachments": [{
-				"callback_id": pollId,
-				"fallback": "Your slack client does not support voting",
-				"actions": [{
-					"name": "poll-action",
-					"type": "button",
-					"style": "danger",
-					"text": "Delete",
-					"value": "delete"
-				}]
-			}]
-		};
-		
-		// slack enterprise seems do not work with confirmation dialog.
-		if (!process.env.SLACK_ENTERPRISE) {
-			message.attachments[0].actions[0].confirm = {
-				"title": "Delete Poll?",
-				"text": "Vote buttons of current active poll will stop working. Are you sure?",
-				"ok_text": "Yes",
-				"dismiss_text": "No"
-			};
-		}
-		return res.status(200).send(message);
-	}
-	
 	createPoll(pollId, match, res);
-	
-
 });
 
 
@@ -243,20 +206,9 @@ app.post('/slack/action', (req, res) => {
 	// Check if user already voted.
 	for(let idx=0; idx<poll.votes.length; idx++) {
 		if (poll.votes[idx][payload.user.id]) {
-			
-			// If user clicked on same vote option.
-			if (idx === payload.actions[0].value) return res.status(200).send({
-				"response_type": "ephemeral",
-				"replace_original": false,
-				"text": "You already voted voted for `" + poll.opts[idx] + "`"
-			});
-			
-			// If user clicked different vote option, update.
-			delete poll.votes[idx][payload.user.id];
-			poll.votes[payload.actions[0].value][payload.user.id] = true;
+			poll.votes[payload.actions[0].value][payload.user.id] = !poll.votes[payload.actions[0].value][payload.user.id];
 			payload.original_message.text = createVoteMessage(poll);
 			return res.status(200).send(payload.original_message);
-			
 		}
 	}
 	
