@@ -130,7 +130,7 @@ app.post('/slack/command', (req, res) => {
 	let payload = req.body;
 	if (process.env.VERIFY_TOKEN && process.env.VERIFY_TOKEN !== payload.token) return res.status(403);
 	
-	let pollId = payload.team_id + ':' + payload.channel_id + ' : ' + Date.now() | 0;
+	let pollId = payload.team_id + ':' + payload.channel_id + ':' + Date.now();
 	debug('pollId', pollId);
 	
 	if (!payload.text) payload.text = '';
@@ -203,16 +203,13 @@ app.post('/slack/action', (req, res) => {
 	
 	if (action.name !== 'vote-option') return res.status(200).send(`ERROR: unknown action \`${action.name}\``);
 	
-	// Check if user already voted.
-	for(let idx=0; idx<poll.votes.length; idx++) {
-		if (poll.votes[idx][payload.user.id]) {
-			poll.votes[payload.actions[0].value][payload.user.id] = !poll.votes[payload.actions[0].value][payload.user.id];
-			payload.original_message.text = createVoteMessage(poll);
-			return res.status(200).send(payload.original_message);
-		}
+
+	if (poll.votes[payload.actions[0].value][payload.user.id]) {
+		delete poll.votes[payload.actions[0].value][payload.user.id];
+	} else {
+	    poll.votes[payload.actions[0].value][payload.user.id] = true;
 	}
 	
-	poll.votes[payload.actions[0].value][payload.user.id] = true;
 	payload.original_message.text = createVoteMessage(poll);
 	return res.status(200).send(payload.original_message);
 
